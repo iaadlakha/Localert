@@ -2,6 +2,7 @@ package com.example.localert_app.di
 
 import android.content.Context
 import com.example.localert_app.service.AlarmService
+import com.example.localert_app.service.GeofenceService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,5 +20,13 @@ object ServiceModule {
         @ApplicationContext context: Context
     ): AlarmService {
         return AlarmService(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGeofenceService(
+        @ApplicationContext context: Context
+    ): GeofenceService {
+        return GeofenceService(context)
     }
 } 

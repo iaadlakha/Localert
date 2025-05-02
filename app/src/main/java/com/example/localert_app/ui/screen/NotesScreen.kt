@@ -21,7 +21,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(
-    onBackClick: () -> Unit,
+    onNavigateBack: () -> Unit,
     viewModel: NoteViewModel = hiltViewModel()
 ) {
     var showAddNoteDialog by remember { mutableStateOf(false) }
@@ -33,7 +33,7 @@ fun NotesScreen(
             TopAppBar(
                 title = { Text("Notes") },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },

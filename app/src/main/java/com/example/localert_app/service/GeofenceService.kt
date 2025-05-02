@@ -2,62 +2,53 @@ package com.example.localert_app.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
 import android.content.Context
-import android.content.Intent
 import android.os.Build
-import android.os.IBinder
-import androidx.core.app.NotificationCompat
-import com.example.localert_app.R
-import com.example.localert_app.data.entity.Reminder
-import com.example.localert_app.data.repository.ReminderRepository
+import android.util.Log
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingClient
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
-import dagger.hilt.android.AndroidEntryPoint
+import com.example.localert_app.data.entity.Reminder
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import javax.inject.Singleton
 
-@AndroidEntryPoint
-class GeofenceService : Service() {
-    private val geofencingClient: GeofencingClient by lazy {
-        LocationServices.getGeofencingClient(this)
-    }
-    private val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-    @Inject
-    lateinit var reminderRepository: ReminderRepository
+@Singleton
+class GeofenceService @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    private val geofencingClient: GeofencingClient = LocationServices.getGeofencingClient(context)
+    private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     init {
         createNotificationChannel()
     }
-
-    override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Geofence Notifications",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Notifications for location-based reminders"
+                enableVibration(true)
+                enableLights(true)
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
 
     fun addGeofence(reminder: Reminder) {
-        val reminderId = reminder.id ?: return // Return early if id is null
-        
+        val reminderId = reminder.id ?: return
+        val latitude = reminder.latitude ?: return
+        val longitude = reminder.longitude ?: return
+        val radius = reminder.radius ?: return
+
         val geofence = Geofence.Builder()
             .setRequestId(reminderId.toString())
-            .setCircularRegion(
-                reminder.latitude ?: 0.0,
-                reminder.longitude ?: 0.0,
-                reminder.radius ?: 100f
-            )
+            .setCircularRegion(latitude, longitude, radius)
             .setExpirationDuration(Geofence.NEVER_EXPIRE)
             .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
             .build()
@@ -67,32 +58,39 @@ class GeofenceService : Service() {
             .addGeofence(geofence)
             .build()
 
-        val intent = Intent(this, GeofenceBroadcastReceiver::class.java).apply {
-            putExtra("reminder_id", reminderId)
-            putExtra("title", reminder.title)
-            putExtra("message", reminder.message)
+        try {
+            geofencingClient.addGeofences(geofencingRequest, getGeofencePendingIntent())
+                .addOnSuccessListener {
+                    Log.d("GeofenceService", "Geofence added successfully for reminder: ${reminder.title}")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("GeofenceService", "Error adding geofence", e)
+                }
+        } catch (e: SecurityException) {
+            Log.e("GeofenceService", "Location permission not granted", e)
         }
-
-        val pendingIntent = PendingIntent.getBroadcast(
-            this,
-            reminderId.toInt(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        geofencingClient.addGeofences(geofencingRequest, pendingIntent)
     }
 
     fun removeGeofence(reminderId: Long) {
-        val intent = Intent(this, GeofenceBroadcastReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            this,
-            reminderId.toInt(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        geofencingClient.removeGeofences(pendingIntent)
+        try {
+            geofencingClient.removeGeofences(listOf(reminderId.toString()))
+                .addOnSuccessListener {
+                    Log.d("GeofenceService", "Geofence removed successfully for reminder ID: $reminderId")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("GeofenceService", "Error removing geofence", e)
+                }
+        } catch (e: SecurityException) {
+            Log.e("GeofenceService", "Location permission not granted", e)
+        }
     }
+
+    private fun getGeofencePendingIntent() = android.app.PendingIntent.getBroadcast(
+        context,
+        0,
+        android.content.Intent(context, GeofenceBroadcastReceiver::class.java),
+        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
+    )
 
     companion object {
         const val CHANNEL_ID = "geofence_channel"

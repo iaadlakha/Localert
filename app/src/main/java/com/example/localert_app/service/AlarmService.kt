@@ -6,6 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.Ringtone
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -18,6 +21,7 @@ import javax.inject.Singleton
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.Date
 
 @Singleton
 class AlarmService @Inject constructor(
@@ -40,8 +44,19 @@ class AlarmService @Inject constructor(
                 description = "Notifications for time-based reminders"
                 enableVibration(true)
                 enableLights(true)
+                setSound(getRingtoneUri(), null)
             }
             notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun getRingtoneUri(): Uri {
+        val sharedPreferences = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val savedRingtoneUri = sharedPreferences.getString("ringtone_uri", null)
+        return if (savedRingtoneUri != null) {
+            Uri.parse(savedRingtoneUri)
+        } else {
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         }
     }
 

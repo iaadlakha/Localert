@@ -30,7 +30,7 @@ import com.google.maps.android.compose.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationReminderScreen(
-    onBackClick: () -> Unit,
+    onNavigateBack: () -> Unit,
     viewModel: ReminderViewModel = hiltViewModel()
 ) {
     var showAddReminderDialog by remember { mutableStateOf(false) }
@@ -55,7 +55,7 @@ fun LocationReminderScreen(
             TopAppBar(
                 title = { Text("Location Reminders") },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -73,34 +73,34 @@ fun LocationReminderScreen(
                 .padding(padding)
         ) {
             if (showMap) {
-                GoogleMap(
-                    modifier = Modifier
+            GoogleMap(
+                modifier = Modifier
                         .fillMaxWidth()
                         .height(300.dp),
-                    cameraPositionState = cameraPositionState,
-                    onMapClick = { latLng ->
-                        selectedLocation = latLng
+                cameraPositionState = cameraPositionState,
+                onMapClick = { latLng ->
+                    selectedLocation = latLng
                         showRadiusSelector = true
-                    }
-                ) {
-                    selectedLocation?.let { location ->
+                }
+            ) {
+                selectedLocation?.let { location ->
                         Circle(
                             center = location,
                             radius = selectedRadius.toDouble(),
                             fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                             strokeColor = MaterialTheme.colorScheme.primary
                         )
-                        Marker(
-                            state = MarkerState(position = location),
-                            title = "Selected Location"
-                        )
-                    }
+                    Marker(
+                        state = MarkerState(position = location),
+                        title = "Selected Location"
+                    )
                 }
+            }
 
                 if (showRadiusSelector) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                             .padding(16.dp)
                     ) {
                         Text("Adjust Radius: ${selectedRadius.toInt()}m")
@@ -135,12 +135,12 @@ fun LocationReminderScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp)
-                ) {
-                    items(locationReminders) { reminder ->
-                        LocationReminderItem(
-                            reminder = reminder,
-                            onDelete = { viewModel.deleteReminder(reminder) }
-                        )
+            ) {
+                items(locationReminders) { reminder ->
+                    LocationReminderItem(
+                        reminder = reminder,
+                        onDelete = { viewModel.deleteReminder(reminder) }
+                    )
                     }
                 }
             }
@@ -176,8 +176,8 @@ fun LocationReminderScreen(
                             if (newTitle.isNotBlank() && selectedLocation != null) {
                                 viewModel.insertReminder(
                                     Reminder(
-                                        title = newTitle,
-                                        message = newMessage,
+                                    title = newTitle,
+                                    message = newMessage,
                                         latitude = selectedLocation?.latitude,
                                         longitude = selectedLocation?.longitude,
                                         radius = selectedRadius,

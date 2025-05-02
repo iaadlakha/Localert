@@ -24,7 +24,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimeReminderScreen(
-    onBackClick: () -> Unit,
+    onNavigateBack: () -> Unit,
     viewModel: ReminderViewModel = hiltViewModel()
 ) {
     var showAddReminderDialog by remember { mutableStateOf(false) }
@@ -41,7 +41,7 @@ fun TimeReminderScreen(
             TopAppBar(
                 title = { Text("Time Reminders") },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -139,8 +139,8 @@ fun TimeReminderScreen(
                             if (newTitle.isNotBlank()) {
                                 viewModel.insertReminder(
                                     Reminder(
-                                        title = newTitle,
-                                        message = newMessage,
+                                    title = newTitle,
+                                    message = newMessage,
                                         createdAt = Date(selectedDateTime.timeInMillis),
                                         isLocationBased = false
                                     )

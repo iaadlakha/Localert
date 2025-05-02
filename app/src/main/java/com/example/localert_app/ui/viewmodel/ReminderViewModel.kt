@@ -38,8 +38,8 @@ class ReminderViewModel @Inject constructor(
                 }
                 .collect { remindersList ->
                     Log.d("ReminderViewModel", "Loaded ${remindersList.size} reminders")
-                    _reminders.value = remindersList
-                }
+                _reminders.value = remindersList
+            }
         }
     }
 
