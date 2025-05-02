@@ -34,7 +34,7 @@ fun LocationReminderScreen(
     viewModel: ReminderViewModel = hiltViewModel()
 ) {
     var showAddReminderDialog by remember { mutableStateOf(false) }
-    var showMap by remember { mutableStateOf(true) }
+    var showMap by remember { mutableStateOf(false) }
     var showRadiusSelector by remember { mutableStateOf(false) }
     var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
     var selectedRadius by remember { mutableStateOf(100f) }
@@ -42,17 +42,10 @@ fun LocationReminderScreen(
     var newMessage by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    val error by viewModel.error.collectAsState()
-    error?.let {
-        LaunchedEffect(it) {
-            SnackbarHostState().showSnackbar(
-                message = it,
-                duration = SnackbarDuration.Short
-            )
-            viewModel.clearError()
-        }
-    }
+    val reminders by viewModel.reminders.collectAsState()
+    val locationReminders = reminders.filter { it.isLocationBased }
 
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 2f)
     }
@@ -67,21 +60,11 @@ fun LocationReminderScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showAddReminderDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Reminder")
+                    IconButton(onClick = { showMap = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Location Reminder")
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showMap = !showMap }
-            ) {
-                Icon(
-                    imageVector = if (showMap) Icons.Default.Add else Icons.Default.Add,
-                    contentDescription = if (showMap) "Hide Map" else "Show Map"
-                )
-            }
         }
     ) { padding ->
         Column(
@@ -113,57 +96,62 @@ fun LocationReminderScreen(
                         )
                     }
                 }
-            }
 
-            if (showRadiusSelector) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text("Set Radius: ${selectedRadius.toInt()}m")
-                    Slider(
-                        value = selectedRadius,
-                        onValueChange = { selectedRadius = it },
-                        valueRange = 50f..1000f,
-                        steps = 19
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                if (showRadiusSelector) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
                     ) {
-                        TextButton(onClick = { showRadiusSelector = false }) {
-                            Text("Cancel")
-                        }
-                        Button(
-                            onClick = {
-                                showAddReminderDialog = true
-                                showRadiusSelector = false
-                            }
+                        Text("Adjust Radius: ${selectedRadius.toInt()}m")
+                        Slider(
+                            value = selectedRadius,
+                            onValueChange = { selectedRadius = it },
+                            valueRange = 50f..1000f,
+                            steps = 19
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Continue")
+                            TextButton(onClick = { 
+                                showMap = false
+                                showRadiusSelector = false
+                                selectedLocation = null
+                            }) {
+                                Text("Cancel")
+                            }
+                            Button(onClick = { 
+                                showMap = false
+                                showRadiusSelector = false
+                                showAddReminderDialog = true
+                            }) {
+                                Text("Continue")
+                            }
                         }
                     }
                 }
-            }
-
-            val locationReminders by viewModel.getLocationReminders().collectAsState(emptyList())
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp)
-            ) {
-                items(locationReminders) { reminder ->
-                    LocationReminderItem(
-                        reminder = reminder,
-                        onDelete = { viewModel.deleteReminder(reminder) }
-                    )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp)
+                ) {
+                    items(locationReminders) { reminder ->
+                        LocationReminderItem(
+                            reminder = reminder,
+                            onDelete = { viewModel.deleteReminder(reminder) }
+                        )
+                    }
                 }
             }
         }
 
         if (showAddReminderDialog) {
             AlertDialog(
-                onDismissRequest = { showAddReminderDialog = false },
+                onDismissRequest = { 
+                    showAddReminderDialog = false
+                    selectedLocation = null
+                },
                 title = { Text("Add Location Reminder") },
                 text = {
                     Column {
@@ -185,17 +173,13 @@ fun LocationReminderScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            if (newTitle.isBlank()) {
-                                // Show error for empty title
-                                return@TextButton
-                            }
-                            selectedLocation?.let { location ->
+                            if (newTitle.isNotBlank() && selectedLocation != null) {
                                 viewModel.insertReminder(
                                     Reminder(
                                         title = newTitle,
                                         message = newMessage,
-                                        latitude = location.latitude,
-                                        longitude = location.longitude,
+                                        latitude = selectedLocation?.latitude,
+                                        longitude = selectedLocation?.longitude,
                                         radius = selectedRadius,
                                         isLocationBased = true
                                     )
@@ -203,7 +187,6 @@ fun LocationReminderScreen(
                                 newTitle = ""
                                 newMessage = ""
                                 selectedLocation = null
-                                selectedRadius = 100f
                                 showAddReminderDialog = false
                             }
                         }
@@ -212,7 +195,10 @@ fun LocationReminderScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddReminderDialog = false }) {
+                    TextButton(onClick = { 
+                        showAddReminderDialog = false
+                        selectedLocation = null
+                    }) {
                         Text("Cancel")
                     }
                 }
@@ -248,6 +234,10 @@ fun LocationReminderItem(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
+                text = "Location: (${reminder.latitude}, ${reminder.longitude})",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
                 text = "Radius: ${reminder.radius?.toInt() ?: 0}m",
                 style = MaterialTheme.typography.bodySmall
             )
@@ -256,7 +246,7 @@ fun LocationReminderItem(
                 horizontalArrangement = Arrangement.End
             ) {
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    Icon(Icons.Default.Delete, contentDescription = "Delete Reminder")
                 }
             }
         }

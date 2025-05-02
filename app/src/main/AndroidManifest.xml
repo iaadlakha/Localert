@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".LocalertApplication"
@@ -51,6 +52,11 @@
 
         <receiver
             android:name=".service.GeofenceBroadcastReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <service
+            android:name=".service.GeofenceService"
             android:enabled="true"
             android:exported="false" />
 

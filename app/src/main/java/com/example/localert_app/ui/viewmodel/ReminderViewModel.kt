@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.localert_app.data.entity.Reminder
 import com.example.localert_app.data.repository.ReminderRepository
 import com.example.localert_app.service.AlarmService
+import com.example.localert_app.service.GeofenceService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -14,7 +15,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ReminderViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
-    private val alarmService: AlarmService
+    private val alarmService: AlarmService,
+    private val geofenceService: GeofenceService
 ) : ViewModel() {
 
     private val _reminders = MutableStateFlow<List<Reminder>>(emptyList())
@@ -47,7 +49,11 @@ class ReminderViewModel @Inject constructor(
             try {
                 val id = reminderRepository.insertReminder(reminder)
                 Log.d("ReminderViewModel", "Successfully inserted reminder with id: $id")
-                if (!reminder.isLocationBased) {
+                
+                // Set up the appropriate notification based on reminder type
+                if (reminder.isLocationBased) {
+                    geofenceService.addGeofence(reminder.copy(id = id))
+                } else {
                     alarmService.setAlarm(reminder.copy(id = id))
                 }
             } catch (e: Exception) {
@@ -61,7 +67,11 @@ class ReminderViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 reminderRepository.updateReminder(reminder)
-                if (!reminder.isLocationBased) {
+                if (reminder.isLocationBased) {
+                    geofenceService.removeGeofence(reminder.id)
+                    geofenceService.addGeofence(reminder)
+                } else {
+                    alarmService.cancelAlarm(reminder.id)
                     alarmService.setAlarm(reminder)
                 }
             } catch (e: Exception) {
@@ -73,7 +83,9 @@ class ReminderViewModel @Inject constructor(
     fun deleteReminder(reminder: Reminder) {
         viewModelScope.launch {
             try {
-                if (!reminder.isLocationBased) {
+                if (reminder.isLocationBased) {
+                    reminder.id?.let { geofenceService.removeGeofence(it) }
+                } else {
                     reminder.id?.let { alarmService.cancelAlarm(it) }
                 }
                 reminderRepository.deleteReminder(reminder)

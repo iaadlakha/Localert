@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.localert_app.R
 import com.example.localert_app.data.entity.Reminder
@@ -34,21 +35,24 @@ class AlarmService @Inject constructor(
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Alarm Notifications",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Notifications for time-based reminders"
+                enableVibration(true)
+                enableLights(true)
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
 
     fun setAlarm(reminder: Reminder) {
-        val reminderId = reminder.id ?: return // Return early if id is null
+        val reminderId = reminder.id ?: return
         
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("reminder_id", reminderId)
             putExtra("title", reminder.title)
             putExtra("message", reminder.message)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -58,18 +62,32 @@ class AlarmService @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Convert Date to LocalDateTime
-        val localDateTime = reminder.createdAt.toInstant()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDateTime()
+        val alarmTime = reminder.createdAt.time
 
-        val alarmTime = localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        // If the alarm time is in the past, don't set it
+        if (alarmTime <= System.currentTimeMillis()) {
+            Log.w("AlarmService", "Cannot set alarm for past time: ${reminder.title}")
+            return
+        }
 
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            alarmTime,
-            pendingIntent
-        )
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    alarmTime,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    alarmTime,
+                    pendingIntent
+                )
+            }
+            Log.d("AlarmService", "Alarm set for ${reminder.title} at ${Date(alarmTime)}")
+        } catch (e: Exception) {
+            Log.e("AlarmService", "Error setting alarm", e)
+        }
     }
 
     fun cancelAlarm(reminderId: Long) {
@@ -80,7 +98,12 @@ class AlarmService @Inject constructor(
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        alarmManager.cancel(pendingIntent)
+        try {
+            alarmManager.cancel(pendingIntent)
+            Log.d("AlarmService", "Alarm cancelled for reminder ID: $reminderId")
+        } catch (e: Exception) {
+            Log.e("AlarmService", "Error cancelling alarm", e)
+        }
     }
 
     companion object {

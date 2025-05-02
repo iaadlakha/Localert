@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -32,6 +33,9 @@ fun TimeReminderScreen(
     var selectedDateTime by remember { mutableStateOf(Calendar.getInstance()) }
     val context = LocalContext.current
 
+    val reminders by viewModel.reminders.collectAsState()
+    val timeReminders = reminders.filter { !it.isLocationBased }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -54,9 +58,6 @@ fun TimeReminderScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            val reminders by viewModel.reminders.collectAsState()
-            val timeReminders = reminders.filter { !it.isLocationBased }
-
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp)
@@ -103,7 +104,10 @@ fun TimeReminderScreen(
                                         val datePickerDialog = DatePickerDialog(
                                             context,
                                             { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
-                                                selectedDateTime.set(year, month, dayOfMonth)
+                                                selectedDateTime.set(Calendar.YEAR, year)
+                                                selectedDateTime.set(Calendar.MONTH, month)
+                                                selectedDateTime.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                                
                                                 // Show Time Picker after Date is selected
                                                 TimePickerDialog(
                                                     context,
@@ -178,7 +182,7 @@ fun TimeReminderItem(
                 .padding(16.dp)
         ) {
             Text(
-                text = reminder.title ?: "Untitled",
+                text = reminder.title,
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -196,8 +200,8 @@ fun TimeReminderItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = onDelete) {
-                    Text("Delete")
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete Reminder")
                 }
             }
         }
