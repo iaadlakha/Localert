@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeScreen">
+
+    <fragment
+        android:id="@+id/homeScreen"
+        android:name="com.example.localert_app.ui.screen.HomeScreen"
+        android:label="Home">
+        <action
+            android:id="@+id/action_homeScreen_to_notesScreen"
+            app:destination="@id/notesScreen" />
+        <action
+            android:id="@+id/action_homeScreen_to_locationReminderScreen"
+            app:destination="@id/locationReminderScreen" />
+        <action
+            android:id="@+id/action_homeScreen_to_timeReminderScreen"
+            app:destination="@id/timeReminderScreen" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/notesScreen"
+        android:name="com.example.localert_app.ui.screen.NotesScreen"
+        android:label="Notes" />
+
+    <fragment
+        android:id="@+id/locationReminderScreen"
+        android:name="com.example.localert_app.ui.screen.LocationReminderScreen"
+        android:label="Location Reminder" />
+
+    <fragment
+        android:id="@+id/timeReminderScreen"
+        android:name="com.example.localert_app.ui.screen.TimeReminderScreen"
+        android:label="Time Reminder" />
+
+</navigation> 
