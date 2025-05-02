@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,21 +34,39 @@ fun LocationReminderScreen(
     onNavigateBack: () -> Unit,
     viewModel: ReminderViewModel = hiltViewModel()
 ) {
-    var showAddReminderDialog by remember { mutableStateOf(false) }
     var showMap by remember { mutableStateOf(false) }
-    var showRadiusSelector by remember { mutableStateOf(false) }
-    var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
-    var selectedRadius by remember { mutableStateOf(100f) }
+    var showAddReminderDialog by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
     var newMessage by remember { mutableStateOf("") }
+    var selectedLocation by remember { mutableStateOf<LatLng?>(null) }
+    var selectedRadius by remember { mutableStateOf(100f) }
     val context = LocalContext.current
 
     val reminders by viewModel.reminders.collectAsState()
+    val editingReminder by viewModel.editingReminder.collectAsState()
     val locationReminders = reminders.filter { it.isLocationBased }
 
+    // Reset form when editing reminder changes
+    LaunchedEffect(editingReminder) {
+        if (editingReminder != null) {
+            newTitle = editingReminder!!.title
+            newMessage = editingReminder!!.message
+            selectedLocation = LatLng(editingReminder!!.latitude!!, editingReminder!!.longitude!!)
+            selectedRadius = editingReminder!!.radius ?: 100f
+            showAddReminderDialog = true
+        }
+    }
+
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 2f)
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val locationGranted = permissions.entries.all { it.value }
+        if (locationGranted) {
+            showMap = true
+        } else {
+            Toast.makeText(context, "Location permission required", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Scaffold(
@@ -60,8 +79,14 @@ fun LocationReminderScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showMap = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Location Reminder")
+                    IconButton(onClick = { 
+                        newTitle = ""
+                        newMessage = ""
+                        selectedLocation = null
+                        selectedRadius = 100f
+                        showMap = true 
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Reminder")
                     }
                 }
             )
@@ -73,75 +98,48 @@ fun LocationReminderScreen(
                 .padding(padding)
         ) {
             if (showMap) {
-            GoogleMap(
-                modifier = Modifier
+                val cameraPositionState = rememberCameraPositionState {
+                    position = CameraPosition.fromLatLngZoom(
+                        selectedLocation ?: LatLng(0.0, 0.0),
+                        15f
+                    )
+                }
+
+                GoogleMap(
+                    modifier = Modifier
                         .fillMaxWidth()
                         .height(300.dp),
-                cameraPositionState = cameraPositionState,
-                onMapClick = { latLng ->
-                    selectedLocation = latLng
-                        showRadiusSelector = true
-                }
-            ) {
-                selectedLocation?.let { location ->
+                    cameraPositionState = cameraPositionState,
+                    onMapClick = { latLng ->
+                        selectedLocation = latLng
+                        showAddReminderDialog = true
+                    }
+                ) {
+                    selectedLocation?.let { location ->
+                        Marker(
+                            state = MarkerState(position = location),
+                            title = "Selected Location"
+                        )
                         Circle(
                             center = location,
                             radius = selectedRadius.toDouble(),
-                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                             strokeColor = MaterialTheme.colorScheme.primary
                         )
-                    Marker(
-                        state = MarkerState(position = location),
-                        title = "Selected Location"
-                    )
+                    }
                 }
             }
 
-                if (showRadiusSelector) {
-                    Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text("Adjust Radius: ${selectedRadius.toInt()}m")
-                        Slider(
-                            value = selectedRadius,
-                            onValueChange = { selectedRadius = it },
-                            valueRange = 50f..1000f,
-                            steps = 19
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            TextButton(onClick = { 
-                                showMap = false
-                                showRadiusSelector = false
-                                selectedLocation = null
-                            }) {
-                                Text("Cancel")
-                            }
-                            Button(onClick = { 
-                                showMap = false
-                                showRadiusSelector = false
-                                showAddReminderDialog = true
-                            }) {
-                                Text("Continue")
-                            }
-                        }
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp)
             ) {
                 items(locationReminders) { reminder ->
                     LocationReminderItem(
                         reminder = reminder,
+                        onEdit = { viewModel.startEditing(reminder) },
                         onDelete = { viewModel.deleteReminder(reminder) }
                     )
-                    }
                 }
             }
         }
@@ -150,9 +148,9 @@ fun LocationReminderScreen(
             AlertDialog(
                 onDismissRequest = { 
                     showAddReminderDialog = false
-                    selectedLocation = null
+                    viewModel.cancelEditing()
                 },
-                title = { Text("Add Location Reminder") },
+                title = { Text(if (editingReminder != null) "Edit Location Reminder" else "Add Location Reminder") },
                 text = {
                     Column {
                         OutlinedTextField(
@@ -168,37 +166,62 @@ fun LocationReminderScreen(
                             label = { Text("Message") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = selectedRadius.toString(),
+                            onValueChange = { 
+                                selectedRadius = it.toFloatOrNull() ?: 100f
+                            },
+                            label = { Text("Radius (meters)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             if (newTitle.isNotBlank() && selectedLocation != null) {
-                                viewModel.insertReminder(
-                                    Reminder(
-                                    title = newTitle,
-                                    message = newMessage,
-                                        latitude = selectedLocation?.latitude,
-                                        longitude = selectedLocation?.longitude,
-                                        radius = selectedRadius,
-                                        isLocationBased = true
+                                if (editingReminder != null) {
+                                    viewModel.updateReminder(
+                                        editingReminder!!.copy(
+                                            title = newTitle,
+                                            message = newMessage,
+                                            latitude = selectedLocation!!.latitude,
+                                            longitude = selectedLocation!!.longitude,
+                                            radius = selectedRadius
+                                        )
                                     )
-                                )
+                                } else {
+                                    viewModel.insertReminder(
+                                        Reminder(
+                                            title = newTitle,
+                                            message = newMessage,
+                                            latitude = selectedLocation!!.latitude,
+                                            longitude = selectedLocation!!.longitude,
+                                            radius = selectedRadius,
+                                            isLocationBased = true
+                                        )
+                                    )
+                                }
                                 newTitle = ""
                                 newMessage = ""
                                 selectedLocation = null
+                                selectedRadius = 100f
                                 showAddReminderDialog = false
+                                showMap = false
                             }
                         }
                     ) {
-                        Text("Add")
+                        Text(if (editingReminder != null) "Update" else "Add")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { 
-                        showAddReminderDialog = false
-                        selectedLocation = null
-                    }) {
+                    TextButton(
+                        onClick = { 
+                            showAddReminderDialog = false
+                            viewModel.cancelEditing()
+                        }
+                    ) {
                         Text("Cancel")
                     }
                 }
@@ -210,6 +233,7 @@ fun LocationReminderScreen(
 @Composable
 fun LocationReminderItem(
     reminder: Reminder,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -238,13 +262,16 @@ fun LocationReminderItem(
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                text = "Radius: ${reminder.radius?.toInt() ?: 0}m",
+                text = "Radius: ${reminder.radius} meters",
                 style = MaterialTheme.typography.bodySmall
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit Reminder")
+                }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete Reminder")
                 }

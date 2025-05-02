@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +29,17 @@ fun NotesScreen(
     var showAddNoteDialog by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
     var newContent by remember { mutableStateOf("") }
+    val notes by viewModel.notes.collectAsState()
+    val editingNote by viewModel.editingNote.collectAsState()
+
+    // Reset form when editing note changes
+    LaunchedEffect(editingNote) {
+        if (editingNote != null) {
+            newTitle = editingNote!!.title
+            newContent = editingNote!!.content
+            showAddNoteDialog = true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -38,7 +51,11 @@ fun NotesScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showAddNoteDialog = true }) {
+                    IconButton(onClick = { 
+                        newTitle = ""
+                        newContent = ""
+                        showAddNoteDialog = true 
+                    }) {
                         Icon(Icons.Default.Add, contentDescription = "Add Note")
                     }
                 }
@@ -50,8 +67,6 @@ fun NotesScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            val notes by viewModel.notes.collectAsState()
-
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp)
@@ -59,6 +74,7 @@ fun NotesScreen(
                 items(notes) { note ->
                     NoteItem(
                         note = note,
+                        onEdit = { viewModel.startEditing(note) },
                         onDelete = { viewModel.deleteNote(note) }
                     )
                 }
@@ -67,8 +83,11 @@ fun NotesScreen(
 
         if (showAddNoteDialog) {
             AlertDialog(
-                onDismissRequest = { showAddNoteDialog = false },
-                title = { Text("Add New Note") },
+                onDismissRequest = { 
+                    showAddNoteDialog = false
+                    viewModel.cancelEditing()
+                },
+                title = { Text(if (editingNote != null) "Edit Note" else "Add New Note") },
                 text = {
                     Column {
                         OutlinedTextField(
@@ -82,7 +101,8 @@ fun NotesScreen(
                             value = newContent,
                             onValueChange = { newContent = it },
                             label = { Text("Content") },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3
                         )
                     }
                 },
@@ -90,18 +110,32 @@ fun NotesScreen(
                     TextButton(
                         onClick = {
                             if (newTitle.isNotBlank()) {
-                                viewModel.addNote(newTitle, newContent)
+                                if (editingNote != null) {
+                                    viewModel.updateNote(
+                                        editingNote!!.copy(
+                                            title = newTitle,
+                                            content = newContent
+                                        )
+                                    )
+                                } else {
+                                    viewModel.addNote(newTitle, newContent)
+                                }
                                 newTitle = ""
                                 newContent = ""
                                 showAddNoteDialog = false
                             }
                         }
                     ) {
-                        Text("Add")
+                        Text(if (editingNote != null) "Update" else "Add")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddNoteDialog = false }) {
+                    TextButton(
+                        onClick = { 
+                            showAddNoteDialog = false
+                            viewModel.cancelEditing()
+                        }
+                    ) {
                         Text("Cancel")
                     }
                 }
@@ -113,6 +147,7 @@ fun NotesScreen(
 @Composable
 fun NoteItem(
     note: Note,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -145,8 +180,11 @@ fun NoteItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = onDelete) {
-                    Text("Delete")
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit Note")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete Note")
                 }
             }
         }

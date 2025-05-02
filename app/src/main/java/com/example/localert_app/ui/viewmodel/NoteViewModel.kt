@@ -19,12 +19,23 @@ class NoteViewModel @Inject constructor(
     private val _notes = MutableStateFlow<List<Note>>(emptyList())
     val notes: StateFlow<List<Note>> = _notes.asStateFlow()
 
+    private val _editingNote = MutableStateFlow<Note?>(null)
+    val editingNote: StateFlow<Note?> = _editingNote.asStateFlow()
+
     init {
         viewModelScope.launch {
             noteRepository.getAllNotes().collect { notesList ->
                 _notes.value = notesList
             }
         }
+    }
+
+    fun startEditing(note: Note) {
+        _editingNote.value = note
+    }
+
+    fun cancelEditing() {
+        _editingNote.value = null
     }
 
     fun addNote(title: String, content: String) {
@@ -36,6 +47,7 @@ class NoteViewModel @Inject constructor(
     fun updateNote(note: Note) {
         viewModelScope.launch {
             noteRepository.updateNote(note)
+            _editingNote.value = null
         }
     }
 

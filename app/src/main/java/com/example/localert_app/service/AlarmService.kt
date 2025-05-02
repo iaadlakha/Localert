@@ -15,13 +15,14 @@ import androidx.core.app.NotificationCompat
 import com.example.localert_app.R
 import com.example.localert_app.data.entity.Reminder
 import com.example.localert_app.data.repository.ReminderRepository
+import com.example.localert_app.util.NotificationHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.Date
+import java.time.format.DateTimeFormatter
 
 @Singleton
 class AlarmService @Inject constructor(
@@ -37,7 +38,7 @@ class AlarmService @Inject constructor(
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID,
+                NotificationHelper.ALARM_CHANNEL_ID,
                 "Alarm Notifications",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
@@ -62,12 +63,17 @@ class AlarmService @Inject constructor(
 
     fun setAlarm(reminder: Reminder) {
         val reminderId = reminder.id ?: return
-        
+        val alarmTime = reminder.createdAt.time
+
+        if (alarmTime <= System.currentTimeMillis()) {
+            Log.w("AlarmService", "Cannot set alarm for past time")
+            return
+        }
+
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("reminder_id", reminderId)
             putExtra("title", reminder.title)
             putExtra("message", reminder.message)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -77,31 +83,28 @@ class AlarmService @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val alarmTime = reminder.createdAt.time
-
-        // If the alarm time is in the past, don't set it
-        if (alarmTime <= System.currentTimeMillis()) {
-            Log.w("AlarmService", "Cannot set alarm for past time: ${reminder.title}")
-            return
-        }
-
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        alarmTime,
+                        pendingIntent
+                    )
+                    Log.i("AlarmService", "Alarm set successfully for reminder: ${reminder.title}")
+                } else {
+                    Log.e("AlarmService", "Cannot schedule exact alarms")
+                }
+            } else {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     alarmTime,
                     pendingIntent
                 )
-            } else {
-                alarmManager.setExact(
-                    AlarmManager.RTC_WAKEUP,
-                    alarmTime,
-                    pendingIntent
-                )
+                Log.i("AlarmService", "Alarm set successfully for reminder: ${reminder.title}")
             }
-            Log.d("AlarmService", "Alarm set for ${reminder.title} at ${Date(alarmTime)}")
-        } catch (e: Exception) {
-            Log.e("AlarmService", "Error setting alarm", e)
+        } catch (e: SecurityException) {
+            Log.e("AlarmService", "Failed to set alarm", e)
         }
     }
 
@@ -113,11 +116,12 @@ class AlarmService @Inject constructor(
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
         try {
             alarmManager.cancel(pendingIntent)
-            Log.d("AlarmService", "Alarm cancelled for reminder ID: $reminderId")
+            Log.i("AlarmService", "Alarm cancelled for reminder ID: $reminderId")
         } catch (e: Exception) {
-            Log.e("AlarmService", "Error cancelling alarm", e)
+            Log.e("AlarmService", "Failed to cancel alarm", e)
         }
     }
 

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -34,7 +35,20 @@ fun TimeReminderScreen(
     val context = LocalContext.current
 
     val reminders by viewModel.reminders.collectAsState()
+    val editingReminder by viewModel.editingReminder.collectAsState()
     val timeReminders = reminders.filter { !it.isLocationBased }
+
+    // Reset form when editing reminder changes
+    LaunchedEffect(editingReminder) {
+        if (editingReminder != null) {
+            newTitle = editingReminder!!.title
+            newMessage = editingReminder!!.message
+            selectedDateTime = Calendar.getInstance().apply {
+                time = editingReminder!!.createdAt
+            }
+            showAddReminderDialog = true
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -46,7 +60,12 @@ fun TimeReminderScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showAddReminderDialog = true }) {
+                    IconButton(onClick = { 
+                        newTitle = ""
+                        newMessage = ""
+                        selectedDateTime = Calendar.getInstance()
+                        showAddReminderDialog = true 
+                    }) {
                         Icon(Icons.Default.Add, contentDescription = "Add Reminder")
                     }
                 }
@@ -65,6 +84,7 @@ fun TimeReminderScreen(
                 items(timeReminders) { reminder ->
                     TimeReminderItem(
                         reminder = reminder,
+                        onEdit = { viewModel.startEditing(reminder) },
                         onDelete = { viewModel.deleteReminder(reminder) }
                     )
                 }
@@ -73,8 +93,11 @@ fun TimeReminderScreen(
 
         if (showAddReminderDialog) {
             AlertDialog(
-                onDismissRequest = { showAddReminderDialog = false },
-                title = { Text("Add Time Reminder") },
+                onDismissRequest = { 
+                    showAddReminderDialog = false
+                    viewModel.cancelEditing()
+                },
+                title = { Text(if (editingReminder != null) "Edit Time Reminder" else "Add Time Reminder") },
                 text = {
                     Column {
                         OutlinedTextField(
@@ -91,60 +114,59 @@ fun TimeReminderScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
-                                .format(selectedDateTime.time),
-                            onValueChange = { },
-                            label = { Text("Date and Time") },
-                            modifier = Modifier.fillMaxWidth(),
-                            readOnly = true,
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = {
-                                        val datePickerDialog = DatePickerDialog(
+                        Button(
+                            onClick = {
+                                val datePickerDialog = DatePickerDialog(
+                                    context,
+                                    { _: DatePicker, year: Int, month: Int, day: Int ->
+                                        selectedDateTime.set(Calendar.YEAR, year)
+                                        selectedDateTime.set(Calendar.MONTH, month)
+                                        selectedDateTime.set(Calendar.DAY_OF_MONTH, day)
+                                        TimePickerDialog(
                                             context,
-                                            { _: DatePicker, year: Int, month: Int, dayOfMonth: Int ->
-                                                selectedDateTime.set(Calendar.YEAR, year)
-                                                selectedDateTime.set(Calendar.MONTH, month)
-                                                selectedDateTime.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                                                
-                                                // Show Time Picker after Date is selected
-                                                TimePickerDialog(
-                                                    context,
-                                                    { _, hourOfDay: Int, minute: Int ->
-                                                        selectedDateTime.set(Calendar.HOUR_OF_DAY, hourOfDay)
-                                                        selectedDateTime.set(Calendar.MINUTE, minute)
-                                                    },
-                                                    selectedDateTime.get(Calendar.HOUR_OF_DAY),
-                                                    selectedDateTime.get(Calendar.MINUTE),
-                                                    true
-                                                ).show()
+                                            { _, hour: Int, minute: Int ->
+                                                selectedDateTime.set(Calendar.HOUR_OF_DAY, hour)
+                                                selectedDateTime.set(Calendar.MINUTE, minute)
                                             },
-                                            selectedDateTime.get(Calendar.YEAR),
-                                            selectedDateTime.get(Calendar.MONTH),
-                                            selectedDateTime.get(Calendar.DAY_OF_MONTH)
-                                        )
-                                        datePickerDialog.show()
-                                    }
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Select Date and Time")
-                                }
-                            }
-                        )
+                                            selectedDateTime.get(Calendar.HOUR_OF_DAY),
+                                            selectedDateTime.get(Calendar.MINUTE),
+                                            true
+                                        ).show()
+                                    },
+                                    selectedDateTime.get(Calendar.YEAR),
+                                    selectedDateTime.get(Calendar.MONTH),
+                                    selectedDateTime.get(Calendar.DAY_OF_MONTH)
+                                )
+                                datePickerDialog.show()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Select Date and Time")
+                        }
                     }
                 },
                 confirmButton = {
                     TextButton(
                         onClick = {
                             if (newTitle.isNotBlank()) {
-                                viewModel.insertReminder(
-                                    Reminder(
-                                    title = newTitle,
-                                    message = newMessage,
-                                        createdAt = Date(selectedDateTime.timeInMillis),
-                                        isLocationBased = false
+                                if (editingReminder != null) {
+                                    viewModel.updateReminder(
+                                        editingReminder!!.copy(
+                                            title = newTitle,
+                                            message = newMessage,
+                                            createdAt = Date(selectedDateTime.timeInMillis)
+                                        )
                                     )
-                                )
+                                } else {
+                                    viewModel.insertReminder(
+                                        Reminder(
+                                            title = newTitle,
+                                            message = newMessage,
+                                            createdAt = Date(selectedDateTime.timeInMillis),
+                                            isLocationBased = false
+                                        )
+                                    )
+                                }
                                 newTitle = ""
                                 newMessage = ""
                                 selectedDateTime = Calendar.getInstance()
@@ -152,11 +174,16 @@ fun TimeReminderScreen(
                             }
                         }
                     ) {
-                        Text("Add")
+                        Text(if (editingReminder != null) "Update" else "Add")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddReminderDialog = false }) {
+                    TextButton(
+                        onClick = { 
+                            showAddReminderDialog = false
+                            viewModel.cancelEditing()
+                        }
+                    ) {
                         Text("Cancel")
                     }
                 }
@@ -168,6 +195,7 @@ fun TimeReminderScreen(
 @Composable
 fun TimeReminderItem(
     reminder: Reminder,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -200,6 +228,9 @@ fun TimeReminderItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit Reminder")
+                }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete Reminder")
                 }

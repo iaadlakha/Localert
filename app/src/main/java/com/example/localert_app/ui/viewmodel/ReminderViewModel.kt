@@ -25,6 +25,9 @@ class ReminderViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private val _editingReminder = MutableStateFlow<Reminder?>(null)
+    val editingReminder: StateFlow<Reminder?> = _editingReminder.asStateFlow()
+
     init {
         loadReminders()
     }
@@ -38,9 +41,17 @@ class ReminderViewModel @Inject constructor(
                 }
                 .collect { remindersList ->
                     Log.d("ReminderViewModel", "Loaded ${remindersList.size} reminders")
-                _reminders.value = remindersList
-            }
+                    _reminders.value = remindersList
+                }
         }
+    }
+
+    fun startEditing(reminder: Reminder) {
+        _editingReminder.value = reminder
+    }
+
+    fun cancelEditing() {
+        _editingReminder.value = null
     }
 
     fun insertReminder(reminder: Reminder) {
@@ -50,7 +61,6 @@ class ReminderViewModel @Inject constructor(
                 val id = reminderRepository.insertReminder(reminder)
                 Log.d("ReminderViewModel", "Successfully inserted reminder with id: $id")
                 
-                // Set up the appropriate notification based on reminder type
                 if (reminder.isLocationBased) {
                     geofenceService.addGeofence(reminder.copy(id = id))
                 } else {
@@ -74,7 +84,10 @@ class ReminderViewModel @Inject constructor(
                     alarmService.cancelAlarm(reminder.id)
                     alarmService.setAlarm(reminder)
                 }
+                _editingReminder.value = null
+                Log.d("ReminderViewModel", "Successfully updated reminder: ${reminder.title}")
             } catch (e: Exception) {
+                Log.e("ReminderViewModel", "Error updating reminder", e)
                 _error.value = "Failed to update reminder: ${e.message}"
             }
         }
@@ -89,7 +102,9 @@ class ReminderViewModel @Inject constructor(
                     reminder.id?.let { alarmService.cancelAlarm(it) }
                 }
                 reminderRepository.deleteReminder(reminder)
+                Log.d("ReminderViewModel", "Successfully deleted reminder: ${reminder.title}")
             } catch (e: Exception) {
+                Log.e("ReminderViewModel", "Error deleting reminder", e)
                 _error.value = "Failed to delete reminder: ${e.message}"
             }
         }
@@ -99,7 +114,9 @@ class ReminderViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 reminderRepository.deactivateReminder(reminderId)
+                Log.d("ReminderViewModel", "Successfully deactivated reminder: $reminderId")
             } catch (e: Exception) {
+                Log.e("ReminderViewModel", "Error deactivating reminder", e)
                 _error.value = "Failed to deactivate reminder: ${e.message}"
             }
         }
