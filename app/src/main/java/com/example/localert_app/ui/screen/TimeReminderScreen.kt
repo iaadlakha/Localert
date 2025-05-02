@@ -3,6 +3,7 @@ package com.example.localert_app.ui.screen
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.widget.DatePicker
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,13 +15,17 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.localert_app.data.entity.Reminder
 import com.example.localert_app.ui.viewmodel.ReminderViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,54 +55,80 @@ fun TimeReminderScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Time Reminders") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF2196F3), // Blue
+                        Color(0xFF21CBF3)  // Light Blue
+                    )
+                )
+            )
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Time Reminders", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
                         newTitle = ""
                         newMessage = ""
                         selectedDateTime = Calendar.getInstance()
-                        showAddReminderDialog = true 
-                    }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Reminder")
-                    }
+                        showAddReminderDialog = true
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Reminder")
                 }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp)
+            },
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.fillMaxSize()
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(timeReminders) { reminder ->
-                    TimeReminderItem(
-                        reminder = reminder,
-                        onEdit = { viewModel.startEditing(reminder) },
-                        onDelete = { viewModel.deleteReminder(reminder) }
-                    )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(timeReminders) { reminder ->
+                        TimeReminderItem(
+                            reminder = reminder,
+                            onEdit = { viewModel.startEditing(reminder) },
+                            onDelete = { viewModel.deleteReminder(reminder) }
+                        )
+                    }
                 }
             }
         }
 
         if (showAddReminderDialog) {
             AlertDialog(
-                onDismissRequest = { 
+                onDismissRequest = {
                     showAddReminderDialog = false
                     viewModel.cancelEditing()
                 },
-                title = { Text(if (editingReminder != null) "Edit Time Reminder" else "Add Time Reminder") },
+                shape = RoundedCornerShape(24.dp),
+                title = { Text(if (editingReminder != null) "Edit Time Reminder" else "Add Time Reminder", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
                 text = {
                     Column {
                         OutlinedTextField(
@@ -139,9 +170,10 @@ fun TimeReminderScreen(
                                 )
                                 datePickerDialog.show()
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Text("Select Date and Time")
+                            Text("Select Date and Time", color = MaterialTheme.colorScheme.onPrimary)
                         }
                     }
                 },
@@ -179,7 +211,7 @@ fun TimeReminderScreen(
                 },
                 dismissButton = {
                     TextButton(
-                        onClick = { 
+                        onClick = {
                             showAddReminderDialog = false
                             viewModel.cancelEditing()
                         }
@@ -201,28 +233,34 @@ fun TimeReminderItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = reminder.title,
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = reminder.message,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Black.copy(alpha = 0.85f)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
                     .format(reminder.createdAt),
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),

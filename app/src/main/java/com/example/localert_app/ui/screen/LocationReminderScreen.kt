@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +18,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -27,6 +31,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,88 +74,114 @@ fun LocationReminderScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Location Reminders") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF2196F3), // Blue
+                        Color(0xFF21CBF3)  // Light Blue
+                    )
+                )
+            )
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Location Reminders", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
                         newTitle = ""
                         newMessage = ""
                         selectedLocation = null
                         selectedRadius = 100f
-                        showMap = true 
-                    }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Reminder")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            if (showMap) {
-                val cameraPositionState = rememberCameraPositionState {
-                    position = CameraPosition.fromLatLngZoom(
-                        selectedLocation ?: LatLng(0.0, 0.0),
-                        15f
-                    )
-                }
-
-                GoogleMap(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp),
-                    cameraPositionState = cameraPositionState,
-                    onMapClick = { latLng ->
-                        selectedLocation = latLng
-                        showAddReminderDialog = true
-                    }
+                        showMap = true
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    selectedLocation?.let { location ->
-                        Marker(
-                            state = MarkerState(position = location),
-                            title = "Selected Location"
-                        )
-                        Circle(
-                            center = location,
-                            radius = selectedRadius.toDouble(),
-                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            strokeColor = MaterialTheme.colorScheme.primary
+                    Icon(Icons.Default.Add, contentDescription = "Add Reminder")
+                }
+            },
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.fillMaxSize()
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (showMap) {
+                    val cameraPositionState = rememberCameraPositionState {
+                        position = CameraPosition.fromLatLngZoom(
+                            selectedLocation ?: LatLng(0.0, 0.0),
+                            15f
                         )
                     }
-                }
-            }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp)
-            ) {
-                items(locationReminders) { reminder ->
-                    LocationReminderItem(
-                        reminder = reminder,
-                        onEdit = { viewModel.startEditing(reminder) },
-                        onDelete = { viewModel.deleteReminder(reminder) }
-                    )
+                    GoogleMap(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(300.dp),
+                        cameraPositionState = cameraPositionState,
+                        onMapClick = { latLng ->
+                            selectedLocation = latLng
+                            showAddReminderDialog = true
+                        }
+                    ) {
+                        selectedLocation?.let { location ->
+                            Marker(
+                                state = MarkerState(position = location),
+                                title = "Selected Location"
+                            )
+                            Circle(
+                                center = location,
+                                radius = selectedRadius.toDouble(),
+                                fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                strokeColor = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(locationReminders) { reminder ->
+                        LocationReminderItem(
+                            reminder = reminder,
+                            onEdit = { viewModel.startEditing(reminder) },
+                            onDelete = { viewModel.deleteReminder(reminder) }
+                        )
+                    }
                 }
             }
         }
 
         if (showAddReminderDialog) {
             AlertDialog(
-                onDismissRequest = { 
+                onDismissRequest = {
                     showAddReminderDialog = false
                     viewModel.cancelEditing()
                 },
-                title = { Text(if (editingReminder != null) "Edit Location Reminder" else "Add Location Reminder") },
+                shape = RoundedCornerShape(24.dp),
+                title = { Text(if (editingReminder != null) "Edit Location Reminder" else "Add Location Reminder", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) },
                 text = {
                     Column {
                         OutlinedTextField(
@@ -169,7 +200,7 @@ fun LocationReminderScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = selectedRadius.toString(),
-                            onValueChange = { 
+                            onValueChange = {
                                 selectedRadius = it.toFloatOrNull() ?: 100f
                             },
                             label = { Text("Radius (meters)") },
@@ -217,7 +248,7 @@ fun LocationReminderScreen(
                 },
                 dismissButton = {
                     TextButton(
-                        onClick = { 
+                        onClick = {
                             showAddReminderDialog = false
                             viewModel.cancelEditing()
                         }
@@ -239,31 +270,38 @@ fun LocationReminderItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .padding(vertical = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = reminder.title,
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = reminder.message,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Black.copy(alpha = 0.85f)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Location: (${reminder.latitude}, ${reminder.longitude})",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
             )
             Text(
                 text = "Radius: ${reminder.radius} meters",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
