@@ -97,7 +97,7 @@ fun TimeReminderScreen(
                 navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_time),
+                                painter = painterResource(id = R.drawable.baseline_arrow_back_24),
                                 contentDescription = "Back",
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -305,14 +305,14 @@ fun TimeReminderItem(
             ) {
                 IconButton(onClick = onEdit) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_time),
+                        painter = painterResource(id = R.drawable.baseline_edit_24),
                         contentDescription = "Edit Reminder",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_time),
+                        painter = painterResource(id = R.drawable.baseline_delete_24),
                         contentDescription = "Delete Reminder",
                         tint = Color.Red
                     )

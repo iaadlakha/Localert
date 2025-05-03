@@ -87,7 +87,7 @@ fun NotesScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_notes),
+                                painter = painterResource(id = R.drawable.baseline_arrow_back_24),
                                 contentDescription = "Back",
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -255,14 +255,14 @@ fun NoteItem(
             ) {
                 IconButton(onClick = onEdit) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_notes),
+                        painter = painterResource(id = R.drawable.baseline_edit_24),
                         contentDescription = "Edit Note",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_notes),
+                        painter = painterResource(id = R.drawable.baseline_delete_24),
                         contentDescription = "Delete Note",
                         tint = Color.Red
                     )
