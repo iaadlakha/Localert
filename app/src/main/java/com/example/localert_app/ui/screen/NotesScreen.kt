@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.localert_app.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -23,6 +24,13 @@ import com.example.localert_app.ui.viewmodel.NoteViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.painterResource
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +53,11 @@ fun NotesScreen(
         }
     }
 
+    val fabScale = remember { Animatable(0.8f) }
+    LaunchedEffect(Unit) {
+        fabScale.animateTo(1f, animationSpec = tween(600))
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -63,7 +76,11 @@ fun NotesScreen(
                     title = { Text("Notes", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_notes),
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -79,9 +96,14 @@ fun NotesScreen(
                         newContent = ""
                         showAddNoteDialog = true
                     },
+                    modifier = Modifier.graphicsLayer(scaleX = fabScale.value, scaleY = fabScale.value),
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Note")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_notes),
+                        contentDescription = "Add Note",
+                        tint = Color.White
+                    )
                 }
             },
             containerColor = Color.Transparent,
@@ -100,11 +122,16 @@ fun NotesScreen(
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(notes) { note ->
-                        NoteItem(
-                            note = note,
-                            onEdit = { viewModel.startEditing(note) },
-                            onDelete = { viewModel.deleteNote(note) }
-                        )
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 })
+                        ) {
+                            NoteItem(
+                                note = note,
+                                onEdit = { viewModel.startEditing(note) },
+                                onDelete = { viewModel.deleteNote(note) }
+                            )
+                        }
                     }
                 }
             }
@@ -217,10 +244,18 @@ fun NoteItem(
                 horizontalArrangement = Arrangement.End
             ) {
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Note")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_notes),
+                        contentDescription = "Edit Note",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete Note")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_notes),
+                        contentDescription = "Delete Note",
+                        tint = Color.Red
+                    )
                 }
             }
         }

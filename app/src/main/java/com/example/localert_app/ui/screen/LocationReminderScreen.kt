@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import com.example.localert_app.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -32,6 +33,13 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.painterResource
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +68,11 @@ fun LocationReminderScreen(
             selectedRadius = editingReminder!!.radius ?: 100f
             showAddReminderDialog = true
         }
+    }
+
+    val fabScale = remember { Animatable(0.8f) }
+    LaunchedEffect(Unit) {
+        fabScale.animateTo(1f, animationSpec = tween(600))
     }
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
@@ -92,7 +105,11 @@ fun LocationReminderScreen(
                     title = { Text("Location Reminders", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_location),
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -110,9 +127,14 @@ fun LocationReminderScreen(
                         selectedRadius = 100f
                         showMap = true
                     },
+                    modifier = Modifier.graphicsLayer(scaleX = fabScale.value, scaleY = fabScale.value),
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Reminder")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_location),
+                        contentDescription = "Add Reminder",
+                        tint = Color.White
+                    )
                 }
             },
             containerColor = Color.Transparent,
@@ -164,11 +186,16 @@ fun LocationReminderScreen(
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(locationReminders) { reminder ->
-                        LocationReminderItem(
-                            reminder = reminder,
-                            onEdit = { viewModel.startEditing(reminder) },
-                            onDelete = { viewModel.deleteReminder(reminder) }
-                        )
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 })
+                        ) {
+                            LocationReminderItem(
+                                reminder = reminder,
+                                onEdit = { viewModel.startEditing(reminder) },
+                                onDelete = { viewModel.deleteReminder(reminder) }
+                            )
+                        }
                     }
                 }
             }
@@ -308,10 +335,18 @@ fun LocationReminderItem(
                 horizontalArrangement = Arrangement.End
             ) {
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Reminder")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_location),
+                        contentDescription = "Edit Reminder",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete Reminder")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_location),
+                        contentDescription = "Delete Reminder",
+                        tint = Color.Red
+                    )
                 }
             }
         }

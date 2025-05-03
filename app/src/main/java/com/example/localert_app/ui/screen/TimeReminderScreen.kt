@@ -26,6 +26,14 @@ import com.example.localert_app.ui.viewmodel.ReminderViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.painterResource
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import com.example.localert_app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +63,11 @@ fun TimeReminderScreen(
         }
     }
 
+    val fabScale = remember { Animatable(0.8f) }
+    LaunchedEffect(Unit) {
+        fabScale.animateTo(1f, animationSpec = tween(600))
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -73,7 +86,11 @@ fun TimeReminderScreen(
                     title = { Text("Time Reminders", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_time),
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -90,9 +107,14 @@ fun TimeReminderScreen(
                         selectedDateTime = Calendar.getInstance()
                         showAddReminderDialog = true
                     },
+                    modifier = Modifier.graphicsLayer(scaleX = fabScale.value, scaleY = fabScale.value),
                     containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Reminder")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_time),
+                        contentDescription = "Add Reminder",
+                        tint = Color.White
+                    )
                 }
             },
             containerColor = Color.Transparent,
@@ -111,11 +133,16 @@ fun TimeReminderScreen(
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
                     items(timeReminders) { reminder ->
-                        TimeReminderItem(
-                            reminder = reminder,
-                            onEdit = { viewModel.startEditing(reminder) },
-                            onDelete = { viewModel.deleteReminder(reminder) }
-                        )
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 })
+                        ) {
+                            TimeReminderItem(
+                                reminder = reminder,
+                                onEdit = { viewModel.startEditing(reminder) },
+                                onDelete = { viewModel.deleteReminder(reminder) }
+                            )
+                        }
                     }
                 }
             }
@@ -267,10 +294,18 @@ fun TimeReminderItem(
                 horizontalArrangement = Arrangement.End
             ) {
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Reminder")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_time),
+                        contentDescription = "Edit Reminder",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete Reminder")
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_time),
+                        contentDescription = "Delete Reminder",
+                        tint = Color.Red
+                    )
                 }
             }
         }
