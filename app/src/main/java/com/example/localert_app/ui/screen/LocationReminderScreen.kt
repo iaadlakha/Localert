@@ -40,6 +40,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.runtime.SideEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +49,14 @@ fun LocationReminderScreen(
     onNavigateBack: () -> Unit,
     viewModel: ReminderViewModel = hiltViewModel()
 ) {
+    val systemUiController = rememberSystemUiController()
+    val statusBarColor = Color(0xFF2196F3)
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = statusBarColor,
+            darkIcons = false
+        )
+    }
     var showMap by remember { mutableStateOf(false) }
     var showAddReminderDialog by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
@@ -76,12 +86,28 @@ fun LocationReminderScreen(
     }
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            Toast.makeText(context, "Background location permission is required for reliable location reminders.", Toast.LENGTH_LONG).show()
+        }
+    }
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val locationGranted = permissions.entries.all { it.value }
         if (locationGranted) {
-            showMap = true
+            // Request background location if needed (Android 10+)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                } else {
+                    showMap = true
+                }
+            } else {
+                showMap = true
+            }
         } else {
             Toast.makeText(context, "Location permission required", Toast.LENGTH_SHORT).show()
         }
@@ -320,6 +346,34 @@ fun LocationReminderItem(
                 color = Color.Black.copy(alpha = 0.85f)
             )
             Spacer(modifier = Modifier.height(8.dp))
+            if (reminder.latitude != null && reminder.longitude != null) {
+                val cameraPositionState = rememberCameraPositionState {
+                    position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
+                        com.google.android.gms.maps.model.LatLng(reminder.latitude, reminder.longitude),
+                        15f
+                    )
+                }
+                GoogleMap(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    cameraPositionState = cameraPositionState
+                ) {
+                    Marker(
+                        state = MarkerState(position = com.google.android.gms.maps.model.LatLng(reminder.latitude, reminder.longitude)),
+                        title = reminder.title
+                    )
+                    reminder.radius?.let { radius ->
+                        Circle(
+                            center = com.google.android.gms.maps.model.LatLng(reminder.latitude, reminder.longitude),
+                            radius = radius.toDouble(),
+                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            strokeColor = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             Text(
                 text = "Location: (${reminder.latitude}, ${reminder.longitude})",
                 style = MaterialTheme.typography.bodySmall,

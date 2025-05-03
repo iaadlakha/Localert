@@ -23,6 +23,52 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import com.example.localert_app.R
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.runtime.SideEffect
+import kotlinx.coroutines.delay
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+
+@Composable
+fun DigitalClock() {
+    var currentTime by remember { mutableStateOf(LocalTime.now()) }
+    
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = LocalTime.now()
+            delay(1000)
+        }
+    }
+    
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    val formattedTime = currentTime.format(timeFormatter)
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .shadow(4.dp, shape = MaterialTheme.shapes.medium),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = formattedTime,
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,26 +78,44 @@ fun HomeScreen(
     onNavigateToTimeReminder: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
+    val systemUiController = rememberSystemUiController()
+    val colorScheme = MaterialTheme.colorScheme
+    
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = colorScheme.primary,
+            darkIcons = false
+        )
+    }
+
     val fabScale = remember { Animatable(0.8f) }
     LaunchedEffect(Unit) {
         fabScale.animateTo(1f, animationSpec = tween(600))
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Localert", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)) },
+                title = {
+                    Text(
+                        text = "Localert",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_settings),
                             contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = colorScheme.tertiary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = colorScheme.primary,
+                    titleContentColor = colorScheme.onPrimary
                 )
             )
         },
@@ -59,45 +123,48 @@ fun HomeScreen(
             FloatingActionButton(
                 onClick = onNavigateToNotes,
                 modifier = Modifier.graphicsLayer(scaleX = fabScale.value, scaleY = fabScale.value),
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = colorScheme.tertiary,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 6.dp,
+                    pressedElevation = 12.dp
+                )
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_notes),
                     contentDescription = "Add Note",
-                    tint = Color.White
+                    tint = colorScheme.onTertiary
                 )
             }
         },
-        containerColor = Color.Transparent
+        containerColor = colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF2196F3), // Blue
-                            Color(0xFF21CBF3)  // Light Blue
-                        )
-                    )
-                )
                 .padding(padding)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 24.dp, vertical = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(28.dp, Alignment.Top),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                DigitalClock()
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
                 Text(
-                    text = "Welcome to Localert!",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
+                    text = "Quick Actions",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = colorScheme.onBackground,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                
                 AnimatedVisibility(
                     visible = true,
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 })
@@ -106,10 +173,11 @@ fun HomeScreen(
                         title = "Notes",
                         description = "Create and manage your notes",
                         onClick = onNavigateToNotes,
-                        color = Color(0xFF42A5F5),
+                        color = colorScheme.primaryContainer,
                         iconRes = R.drawable.ic_notes
                     )
                 }
+                
                 AnimatedVisibility(
                     visible = true,
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 })
@@ -118,10 +186,11 @@ fun HomeScreen(
                         title = "Location Reminders",
                         description = "Set reminders based on location",
                         onClick = onNavigateToLocationReminder,
-                        color = Color(0xFF26C6DA),
+                        color = colorScheme.secondaryContainer,
                         iconRes = R.drawable.ic_location
                     )
                 }
+                
                 AnimatedVisibility(
                     visible = true,
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 })
@@ -130,7 +199,7 @@ fun HomeScreen(
                         title = "Time Reminders",
                         description = "Set reminders based on time",
                         onClick = onNavigateToTimeReminder,
-                        color = Color(0xFF66BB6A),
+                        color = colorScheme.tertiaryContainer,
                         iconRes = R.drawable.ic_time
                     )
                 }
@@ -150,42 +219,45 @@ fun HomeFeatureCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, shape = MaterialTheme.shapes.large)
-            .heightIn(min = 100.dp)
-            .padding(vertical = 8.dp),
+            .shadow(4.dp, shape = MaterialTheme.shapes.medium)
+            .heightIn(min = 80.dp),
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.95f)),
-        shape = MaterialTheme.shapes.large,
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = color
+        ),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 painter = painterResource(id = iconRes),
                 contentDescription = title,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(32.dp)
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
                     color = MaterialTheme.colorScheme.onPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                 )
             }

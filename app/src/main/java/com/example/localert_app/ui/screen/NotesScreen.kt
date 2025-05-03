@@ -31,6 +31,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.runtime.SideEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +40,14 @@ fun NotesScreen(
     onNavigateBack: () -> Unit,
     viewModel: NoteViewModel = hiltViewModel()
 ) {
+    val systemUiController = rememberSystemUiController()
+    val statusBarColor = Color(0xFF2196F3)
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = statusBarColor,
+            darkIcons = false
+        )
+    }
     var showAddNoteDialog by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
     var newContent by remember { mutableStateOf("") }

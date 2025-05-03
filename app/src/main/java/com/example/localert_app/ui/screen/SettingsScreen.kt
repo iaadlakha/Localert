@@ -26,6 +26,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import com.example.localert_app.R
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.runtime.SideEffect
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,6 +36,14 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val systemUiController = rememberSystemUiController()
+    val statusBarColor = Color(0xFF2196F3)
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = statusBarColor,
+            darkIcons = false
+        )
+    }
     val context = LocalContext.current
     val currentRingtone by viewModel.currentRingtone.collectAsState()
 

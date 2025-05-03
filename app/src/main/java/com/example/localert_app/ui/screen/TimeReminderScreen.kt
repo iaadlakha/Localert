@@ -34,6 +34,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
 import com.example.localert_app.R
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.runtime.SideEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,14 @@ fun TimeReminderScreen(
     onNavigateBack: () -> Unit,
     viewModel: ReminderViewModel = hiltViewModel()
 ) {
+    val systemUiController = rememberSystemUiController()
+    val statusBarColor = Color(0xFF2196F3)
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = statusBarColor,
+            darkIcons = false
+        )
+    }
     var showAddReminderDialog by remember { mutableStateOf(false) }
     var newTitle by remember { mutableStateOf("") }
     var newMessage by remember { mutableStateOf("") }
@@ -80,19 +90,19 @@ fun TimeReminderScreen(
                 )
             )
     ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
+    Scaffold(
+        topBar = {
+            TopAppBar(
                     title = { Text("Time Reminders", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)) },
-                    navigationIcon = {
+                navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_time),
                                 contentDescription = "Back",
                                 tint = MaterialTheme.colorScheme.primary
                             )
-                        }
-                    },
+                    }
+                },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Color.Transparent,
                         titleContentColor = MaterialTheme.colorScheme.onPrimary
@@ -115,33 +125,33 @@ fun TimeReminderScreen(
                         contentDescription = "Add Reminder",
                         tint = Color.White
                     )
-                }
+                    }
             },
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.fillMaxSize()
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    items(timeReminders) { reminder ->
+            ) {
+                items(timeReminders) { reminder ->
                         AnimatedVisibility(
                             visible = true,
                             enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 })
                         ) {
-                            TimeReminderItem(
-                                reminder = reminder,
+                    TimeReminderItem(
+                        reminder = reminder,
                                 onEdit = { viewModel.startEditing(reminder) },
-                                onDelete = { viewModel.deleteReminder(reminder) }
-                            )
+                        onDelete = { viewModel.deleteReminder(reminder) }
+                    )
                         }
                     }
                 }
@@ -173,35 +183,35 @@ fun TimeReminderScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
-                            onClick = {
-                                val datePickerDialog = DatePickerDialog(
-                                    context,
+                                    onClick = {
+                                        val datePickerDialog = DatePickerDialog(
+                                            context,
                                     { _: DatePicker, year: Int, month: Int, day: Int ->
                                         selectedDateTime.set(Calendar.YEAR, year)
                                         selectedDateTime.set(Calendar.MONTH, month)
                                         selectedDateTime.set(Calendar.DAY_OF_MONTH, day)
-                                        TimePickerDialog(
-                                            context,
+                                                TimePickerDialog(
+                                                    context,
                                             { _, hour: Int, minute: Int ->
                                                 selectedDateTime.set(Calendar.HOUR_OF_DAY, hour)
-                                                selectedDateTime.set(Calendar.MINUTE, minute)
+                                                        selectedDateTime.set(Calendar.MINUTE, minute)
+                                                    },
+                                                    selectedDateTime.get(Calendar.HOUR_OF_DAY),
+                                                    selectedDateTime.get(Calendar.MINUTE),
+                                                    true
+                                                ).show()
                                             },
-                                            selectedDateTime.get(Calendar.HOUR_OF_DAY),
-                                            selectedDateTime.get(Calendar.MINUTE),
-                                            true
-                                        ).show()
-                                    },
-                                    selectedDateTime.get(Calendar.YEAR),
-                                    selectedDateTime.get(Calendar.MONTH),
-                                    selectedDateTime.get(Calendar.DAY_OF_MONTH)
-                                )
-                                datePickerDialog.show()
+                                            selectedDateTime.get(Calendar.YEAR),
+                                            selectedDateTime.get(Calendar.MONTH),
+                                            selectedDateTime.get(Calendar.DAY_OF_MONTH)
+                                        )
+                                        datePickerDialog.show()
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
+                                ) {
                             Text("Select Date and Time", color = MaterialTheme.colorScheme.onPrimary)
-                        }
+                            }
                     }
                 },
                 confirmButton = {
@@ -219,12 +229,12 @@ fun TimeReminderScreen(
                                 } else {
                                     viewModel.insertReminder(
                                         Reminder(
-                                            title = newTitle,
-                                            message = newMessage,
+                                    title = newTitle,
+                                    message = newMessage,
                                             createdAt = Date(selectedDateTime.timeInMillis),
                                             isLocationBased = false
                                         )
-                                    )
+                                )
                                 }
                                 newTitle = ""
                                 newMessage = ""
